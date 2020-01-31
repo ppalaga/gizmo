@@ -16,6 +16,10 @@
 
 package io.quarkus.gizmo;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
 import org.jboss.jandex.ArrayType;
 import org.jboss.jandex.ClassType;
 import org.jboss.jandex.ParameterizedType;
@@ -220,6 +224,34 @@ public class DescriptorUtils {
             return ret.toString();
         } else {
             throw new RuntimeException("Invalid type for descriptor " + type);
+        }
+    }
+
+    public static String methodSignatureHash(String methodName, Class<?> returnType, Class<?>[] parameterTypes) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-1");
+            md.update(returnType.getName().getBytes(StandardCharsets.UTF_8));
+            md.update(((byte) ' '));
+            md.update(methodName.getBytes(StandardCharsets.UTF_8));
+            md.update(((byte) '('));
+            boolean first = true;
+            for (Class<?> paramType : parameterTypes) {
+                if (first) {
+                    first = false;
+                } else {
+                    md.update(((byte) ','));
+                }
+                md.update(paramType.getName().getBytes(StandardCharsets.UTF_8));
+            }
+            md.update(((byte) ')'));
+            byte[] digest = md.digest();
+            final StringBuilder sb = new StringBuilder(40);
+            for (int i = 0; i < digest.length; ++i) {
+                sb.append(Integer.toHexString((digest[i] & 0xFF) | 0x100).substring(1, 3));
+            }
+            return sb.toString();
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
         }
     }
 }
